@@ -19,7 +19,6 @@ package com.google.common.collect;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ObjectArrays.checkElementsNotNull;
 
-import com.google.common.annotations.Beta;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,7 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.RandomAccess;
 import java.util.stream.Collector;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * GWT emulated version of {@link com.google.common.collect.ImmutableList}. TODO(cpovirk): more doc
@@ -45,7 +44,6 @@ public abstract class ImmutableList<E> extends ImmutableCollection<E>
 
   ImmutableList() {}
 
-  @Beta
   public static <E> Collector<E, ?, ImmutableList<E>> toImmutableList() {
     return CollectCollectors.toImmutableList();
   }
@@ -216,12 +214,12 @@ public abstract class ImmutableList<E> extends ImmutableCollection<E>
   }
 
   @Override
-  public int indexOf(@NullableDecl Object object) {
+  public int indexOf(@Nullable Object object) {
     return (object == null) ? -1 : Lists.indexOfImpl(this, object);
   }
 
   @Override
-  public int lastIndexOf(@NullableDecl Object object) {
+  public int lastIndexOf(@Nullable Object object) {
     return (object == null) ? -1 : Lists.lastIndexOfImpl(this, object);
   }
 
@@ -272,7 +270,7 @@ public abstract class ImmutableList<E> extends ImmutableCollection<E>
   }
 
   @Override
-  public boolean equals(@NullableDecl Object obj) {
+  public boolean equals(@Nullable Object obj) {
     return Lists.equalsImpl(this, obj);
   }
 

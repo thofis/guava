@@ -20,7 +20,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ObjectArrays.checkElementsNotNull;
 
-import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -39,7 +38,7 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A {@link NavigableSet} whose contents will never change, with many other important properties
@@ -75,7 +74,6 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
    *
    * @since 21.0
    */
-  @Beta
   public static <E> Collector<E, ?, ImmutableSortedSet<E>> toImmutableSortedSet(
       Comparator<? super E> comparator) {
     return CollectCollectors.toImmutableSortedSet(comparator);
@@ -620,7 +618,6 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
   }
 
   /** @since 12.0 */
-  @GwtIncompatible // NavigableSet
   @Override
   public ImmutableSortedSet<E> headSet(E toElement, boolean inclusive) {
     return headSetImpl(checkNotNull(toElement), inclusive);
@@ -670,7 +667,6 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
   }
 
   /** @since 12.0 */
-  @GwtIncompatible // NavigableSet
   @Override
   public ImmutableSortedSet<E> tailSet(E fromElement, boolean inclusive) {
     return tailSetImpl(checkNotNull(fromElement), inclusive);
@@ -695,14 +691,12 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
   }
 
   /** @since 12.0 */
-  @GwtIncompatible // NavigableSet
   @Override
   public E floor(E e) {
     return Iterators.getNext(headSet(e, true).descendingIterator(), null);
   }
 
   /** @since 12.0 */
-  @GwtIncompatible // NavigableSet
   @Override
   public E ceiling(E e) {
     return Iterables.getFirst(tailSet(e, true), null);
@@ -807,7 +801,7 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
   public abstract UnmodifiableIterator<E> descendingIterator();
 
   /** Returns the position of an element within the set, or -1 if not present. */
-  abstract int indexOf(@NullableDecl Object target);
+  abstract int indexOf(@Nullable Object target);
 
   /*
    * This class is used to serialize all ImmutableSortedSet instances,
@@ -832,7 +826,7 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
     private static final long serialVersionUID = 0;
   }
 
-  private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+  private void readObject(ObjectInputStream unused) throws InvalidObjectException {
     throw new InvalidObjectException("Use SerializedForm");
   }
 

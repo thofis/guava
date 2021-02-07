@@ -25,7 +25,9 @@ import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.DoNotMock;
 import com.google.errorprone.annotations.concurrent.LazyInit;
+import com.google.j2objc.annotations.RetainedWith;
 import com.google.j2objc.annotations.WeakOuter;
 import java.io.Serializable;
 import java.util.AbstractMap;
@@ -35,7 +37,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.Spliterator;
@@ -45,8 +46,7 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A {@link Map} whose contents will never change, with many other important properties detailed at
@@ -59,6 +59,7 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
  * @author Kevin Bourrillion
  * @since 2.0
  */
+@DoNotMock("Use ImmutableMap.of or another implementation")
 @GwtCompatible(serializable = true, emulated = true)
 @SuppressWarnings("serial") // we're overriding default serialization
 public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
@@ -75,7 +76,6 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    *
    * @since 21.0
    */
-  @Beta
   public static <T, K, V> Collector<T, ?, ImmutableMap<K, V>> toImmutableMap(
       Function<? super T, ? extends K> keyFunction,
       Function<? super T, ? extends V> valueFunction) {
@@ -92,17 +92,11 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    *
    * @since 21.0
    */
-  @Beta
   public static <T, K, V> Collector<T, ?, ImmutableMap<K, V>> toImmutableMap(
       Function<? super T, ? extends K> keyFunction,
       Function<? super T, ? extends V> valueFunction,
       BinaryOperator<V> mergeFunction) {
-    checkNotNull(keyFunction);
-    checkNotNull(valueFunction);
-    checkNotNull(mergeFunction);
-    return Collectors.collectingAndThen(
-        Collectors.toMap(keyFunction, valueFunction, mergeFunction, LinkedHashMap::new),
-        ImmutableMap::copyOf);
+    return CollectCollectors.toImmutableMap(keyFunction, valueFunction, mergeFunction);
   }
 
   /**
@@ -245,8 +239,9 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    *
    * @since 2.0
    */
+  @DoNotMock
   public static class Builder<K, V> {
-    @MonotonicNonNullDecl Comparator<? super V> valueComparator;
+    @Nullable Comparator<? super V> valueComparator;
     Entry<K, V>[] entries;
     int size;
     boolean entriesUsed;
@@ -493,7 +488,6 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
 
     @Override
     ImmutableSet<Entry<K, V>> createEntrySet() {
-      @WeakOuter
       class EntrySetImpl extends ImmutableMapEntrySet<K, V> {
         @Override
         ImmutableMap<K, V> map() {
@@ -682,18 +676,18 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
   }
 
   @Override
-  public boolean containsKey(@NullableDecl Object key) {
+  public boolean containsKey(@Nullable Object key) {
     return get(key) != null;
   }
 
   @Override
-  public boolean containsValue(@NullableDecl Object value) {
+  public boolean containsValue(@Nullable Object value) {
     return values().contains(value);
   }
 
   // Overriding to mark it Nullable
   @Override
-  public abstract V get(@NullableDecl Object key);
+  public abstract V get(@Nullable Object key);
 
   /**
    * @since 21.0 (but only since 23.5 in the Android <a
@@ -701,12 +695,12 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    *     Note, however, that Java 8 users can call this method with any version and flavor of Guava.
    */
   @Override
-  public final V getOrDefault(@NullableDecl Object key, @NullableDecl V defaultValue) {
+  public final V getOrDefault(@Nullable Object key, @Nullable V defaultValue) {
     V result = get(key);
     return (result != null) ? result : defaultValue;
   }
 
-  @LazyInit private transient ImmutableSet<Entry<K, V>> entrySet;
+  @LazyInit @RetainedWith private transient ImmutableSet<Entry<K, V>> entrySet;
 
   /**
    * Returns an immutable set of the mappings in this map. The iteration order is specified by the
@@ -720,7 +714,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
 
   abstract ImmutableSet<Entry<K, V>> createEntrySet();
 
-  @LazyInit private transient ImmutableSet<K> keySet;
+  @LazyInit @RetainedWith private transient ImmutableSet<K> keySet;
 
   /**
    * Returns an immutable set of the keys in this map, in the same order that they appear in {@link
@@ -758,7 +752,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
     return CollectSpliterators.map(entrySet().spliterator(), Entry::getKey);
   }
 
-  @LazyInit private transient ImmutableCollection<V> values;
+  @LazyInit @RetainedWith private transient ImmutableCollection<V> values;
 
   /**
    * Returns an immutable collection of the values in this map, in the same order that they appear
@@ -811,12 +805,12 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
     }
 
     @Override
-    public boolean containsKey(@NullableDecl Object key) {
+    public boolean containsKey(@Nullable Object key) {
       return ImmutableMap.this.containsKey(key);
     }
 
     @Override
-    public ImmutableSet<V> get(@NullableDecl Object key) {
+    public ImmutableSet<V> get(@Nullable Object key) {
       V outerValue = ImmutableMap.this.get(key);
       return (outerValue == null) ? null : ImmutableSet.of(outerValue);
     }
@@ -866,7 +860,7 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
   }
 
   @Override
-  public boolean equals(@NullableDecl Object object) {
+  public boolean equals(@Nullable Object object) {
     return Maps.equalsImpl(this, object);
   }
 
@@ -891,37 +885,85 @@ public abstract class ImmutableMap<K, V> implements Map<K, V>, Serializable {
    * reconstructed using public factory methods. This ensures that the implementation types remain
    * as implementation details.
    */
-  static class SerializedForm implements Serializable {
-    private final Object[] keys;
-    private final Object[] values;
+  static class SerializedForm<K, V> implements Serializable {
+    // This object retains references to collections returned by keySet() and value(). This saves
+    // bytes when the both the map and its keySet or value collection are written to the same
+    // instance of ObjectOutputStream.
 
-    SerializedForm(ImmutableMap<?, ?> map) {
-      keys = new Object[map.size()];
-      values = new Object[map.size()];
-      int i = 0;
-      for (Entry<?, ?> entry : map.entrySet()) {
-        keys[i] = entry.getKey();
-        values[i] = entry.getValue();
-        i++;
+    // TODO(b/160980469): remove support for the old serialization format after some time
+    private static final boolean USE_LEGACY_SERIALIZATION = true;
+
+    private final Object keys;
+    private final Object values;
+
+    SerializedForm(ImmutableMap<K, V> map) {
+      if (USE_LEGACY_SERIALIZATION) {
+        Object[] keys = new Object[map.size()];
+        Object[] values = new Object[map.size()];
+        int i = 0;
+        for (Entry<?, ?> entry : map.entrySet()) {
+          keys[i] = entry.getKey();
+          values[i] = entry.getValue();
+          i++;
+        }
+        this.keys = keys;
+        this.values = values;
+        return;
       }
+      this.keys = map.keySet();
+      this.values = map.values();
     }
 
-    Object readResolve() {
-      Builder<Object, Object> builder = new Builder<>(keys.length);
-      return createMap(builder);
+    @SuppressWarnings("unchecked")
+    final Object readResolve() {
+      if (!(this.keys instanceof ImmutableSet)) {
+        return legacyReadResolve();
+      }
+
+      ImmutableSet<K> keySet = (ImmutableSet<K>) this.keys;
+      ImmutableCollection<V> values = (ImmutableCollection<V>) this.values;
+
+      Builder<K, V> builder = makeBuilder(keySet.size());
+
+      UnmodifiableIterator<K> keyIter = keySet.iterator();
+      UnmodifiableIterator<V> valueIter = values.iterator();
+
+      while (keyIter.hasNext()) {
+        builder.put(keyIter.next(), valueIter.next());
+      }
+
+      return builder.build();
     }
 
-    Object createMap(Builder<Object, Object> builder) {
+    @SuppressWarnings("unchecked")
+    final Object legacyReadResolve() {
+      K[] keys = (K[]) this.keys;
+      V[] values = (V[]) this.values;
+
+      Builder<K, V> builder = makeBuilder(keys.length);
+
       for (int i = 0; i < keys.length; i++) {
         builder.put(keys[i], values[i]);
       }
       return builder.build();
     }
 
+    /**
+     * Returns a builder that builds the unserialized type. Subclasses should override this method.
+     */
+    Builder<K, V> makeBuilder(int size) {
+      return new Builder<>(size);
+    }
+
     private static final long serialVersionUID = 0;
   }
 
+  /**
+   * Returns a serializable form of this object. Non-public subclasses should not override this
+   * method. Publicly-accessible subclasses must override this method and should return a subclass
+   * of SerializedForm whose readResolve() method returns objects of the subclass type.
+   */
   Object writeReplace() {
-    return new SerializedForm(this);
+    return new SerializedForm<>(this);
   }
 }

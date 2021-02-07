@@ -24,6 +24,7 @@ import static com.google.common.collect.Sets.powerSet;
 import static com.google.common.collect.Sets.unmodifiableNavigableSet;
 import static com.google.common.collect.testing.IteratorFeature.UNMODIFIABLE;
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
 import static java.io.ObjectStreamConstants.TC_REFERENCE;
 import static java.io.ObjectStreamConstants.baseWireHandle;
 import static java.util.Collections.emptySet;
@@ -917,6 +918,12 @@ public class SetsTest extends TestCase {
     }
 
     try {
+      Set<Set<Integer>> unused = powerSet(ContiguousSet.closed(0, Integer.MAX_VALUE / 2));
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+
+    try {
       powerSet(singleton(null));
       fail();
     } catch (NullPointerException expected) {
@@ -940,6 +947,13 @@ public class SetsTest extends TestCase {
           .testEquals();
       assertEquals(toHashSets(powerSet1).hashCode(), powerSet1.hashCode());
     }
+  }
+
+  public void testPowerSetEquals_independentOfOrder() {
+    ImmutableSet<Integer> elements = ImmutableSet.of(1, 2, 3, 4);
+    Set<Set<Integer>> forward = powerSet(elements);
+    Set<Set<Integer>> reverse = powerSet(ImmutableSet.copyOf(elements.asList().reverse()));
+    new EqualsTester().addEqualityGroup(forward, reverse).testEquals();
   }
 
   /**
@@ -1026,8 +1040,8 @@ public class SetsTest extends TestCase {
                     return input.size() == size;
                   }
                 });
-        assertThat(Sets.combinations(sampleSet, k))
-            .named("Sets.combinations(%s, %s)", sampleSet, k)
+        assertWithMessage("Sets.combinations(%s, %s)", sampleSet, k)
+            .that(Sets.combinations(sampleSet, k))
             .containsExactlyElementsIn(expected)
             .inOrder();
       }

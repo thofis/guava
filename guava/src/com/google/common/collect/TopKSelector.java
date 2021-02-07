@@ -28,7 +28,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * An accumulator that selects the "top" {@code k} elements added to it, relative to a provided
@@ -51,14 +51,15 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
  *
  * @author Louis Wasserman
  */
-@GwtCompatible final class TopKSelector<T> {
+@GwtCompatible
+final class TopKSelector<T> {
 
   /**
    * Returns a {@code TopKSelector} that collects the lowest {@code k} elements added to it,
    * relative to the natural ordering of the elements, and returns them via {@link #topK} in
    * ascending order.
    *
-   * @throws IllegalArgumentException if {@code k < 0}
+   * @throws IllegalArgumentException if {@code k < 0} or {@code k > Integer.MAX_VALUE / 2}
    */
   public static <T extends Comparable<? super T>> TopKSelector<T> least(int k) {
     return least(k, Ordering.natural());
@@ -68,7 +69,7 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
    * Returns a {@code TopKSelector} that collects the lowest {@code k} elements added to it,
    * relative to the specified comparator, and returns them via {@link #topK} in ascending order.
    *
-   * @throws IllegalArgumentException if {@code k < 0}
+   * @throws IllegalArgumentException if {@code k < 0} or {@code k > Integer.MAX_VALUE / 2}
    */
   public static <T> TopKSelector<T> least(int k, Comparator<? super T> comparator) {
     return new TopKSelector<T>(comparator, k);
@@ -79,7 +80,7 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
    * relative to the natural ordering of the elements, and returns them via {@link #topK} in
    * descending order.
    *
-   * @throws IllegalArgumentException if {@code k < 0}
+   * @throws IllegalArgumentException if {@code k < 0} or {@code k > Integer.MAX_VALUE / 2}
    */
   public static <T extends Comparable<? super T>> TopKSelector<T> greatest(int k) {
     return greatest(k, Ordering.natural());
@@ -89,7 +90,7 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
    * Returns a {@code TopKSelector} that collects the greatest {@code k} elements added to it,
    * relative to the specified comparator, and returns them via {@link #topK} in descending order.
    *
-   * @throws IllegalArgumentException if {@code k < 0}
+   * @throws IllegalArgumentException if {@code k < 0} or {@code k > Integer.MAX_VALUE / 2}
    */
   public static <T> TopKSelector<T> greatest(int k, Comparator<? super T> comparator) {
     return new TopKSelector<T>(Ordering.from(comparator).reverse(), k);
@@ -110,13 +111,14 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
    * The largest of the lowest k elements we've seen so far relative to this comparator. If
    * bufferSize ≥ k, then we can ignore any elements greater than this value.
    */
-  @NullableDecl private T threshold;
+  private @Nullable T threshold;
 
   private TopKSelector(Comparator<? super T> comparator, int k) {
     this.comparator = checkNotNull(comparator, "comparator");
     this.k = k;
-    checkArgument(k >= 0, "k must be nonnegative, was %s", k);
-    this.buffer = (T[]) new Object[k * 2];
+    checkArgument(k >= 0, "k (%s) must be >= 0", k);
+    checkArgument(k <= Integer.MAX_VALUE / 2, "k (%s) must be <= Integer.MAX_VALUE / 2", k);
+    this.buffer = (T[]) new Object[IntMath.checkedMultiply(k, 2)];
     this.bufferSize = 0;
     this.threshold = null;
   }
@@ -125,7 +127,7 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
    * Adds {@code elem} as a candidate for the top {@code k} elements. This operation takes amortized
    * O(1) time.
    */
-  public void offer(@NullableDecl T elem) {
+  public void offer(@Nullable T elem) {
     if (k == 0) {
       return;
     } else if (bufferSize == 0) {

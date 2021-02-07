@@ -98,7 +98,7 @@ public class AbstractScheduledServiceTest extends TestCase {
       fail();
     } catch (CancellationException expected) {
     }
-    // An execution exception holds a runtime exception (from throwables.propogate) that holds our
+    // An execution exception holds a runtime exception (from throwables.propagate) that holds our
     // original exception.
     assertEquals(service.runException, service.failureCause());
     assertEquals(Service.State.FAILED, service.state());
@@ -295,7 +295,9 @@ public class AbstractScheduledServiceTest extends TestCase {
       service.startAsync().awaitRunning(1, TimeUnit.MILLISECONDS);
       fail("Expected timeout");
     } catch (TimeoutException e) {
-      assertThat(e).hasMessage("Timed out waiting for Foo [STARTING] to reach the RUNNING state.");
+      assertThat(e)
+          .hasMessageThat()
+          .isEqualTo("Timed out waiting for Foo [STARTING] to reach the RUNNING state.");
     }
   }
 
@@ -418,6 +420,7 @@ public class AbstractScheduledServiceTest extends TestCase {
       assertTrue(called);
     }
 
+
     public void testFixedDelayScheduleFarFuturePotentiallyOverflowingScheduleIsNeverReached()
         throws Exception {
       TestAbstractScheduledCustomService service =
@@ -437,6 +440,7 @@ public class AbstractScheduledServiceTest extends TestCase {
       service.stopAsync();
       service.awaitTerminated();
     }
+
 
     public void testCustomSchedulerFarFuturePotentiallyOverflowingScheduleIsNeverReached()
         throws Exception {
@@ -473,6 +477,7 @@ public class AbstractScheduledServiceTest extends TestCase {
       }
     }
 
+
     public void testCustomSchedule_startStop() throws Exception {
       final CyclicBarrier firstBarrier = new CyclicBarrier(2);
       final CyclicBarrier secondBarrier = new CyclicBarrier(2);
@@ -503,6 +508,7 @@ public class AbstractScheduledServiceTest extends TestCase {
       future.cancel(false);
     }
 
+
     public void testCustomSchedulerServiceStop() throws Exception {
       TestAbstractScheduledCustomService service = new TestAbstractScheduledCustomService();
       service.startAsync().awaitRunning();
@@ -515,6 +521,7 @@ public class AbstractScheduledServiceTest extends TestCase {
       Thread.sleep(unit.toMillis(3 * delay));
       assertEquals(1, service.numIterations.get());
     }
+
 
     public void testCustomScheduler_deadlock() throws InterruptedException, BrokenBarrierException {
       final CyclicBarrier inGetNextSchedule = new CyclicBarrier(2);
@@ -545,6 +552,7 @@ public class AbstractScheduledServiceTest extends TestCase {
         service.stopAsync();
       }
     }
+
 
     public void testBig() throws Exception {
       TestAbstractScheduledCustomService service =
@@ -604,6 +612,7 @@ public class AbstractScheduledServiceTest extends TestCase {
         };
       }
     }
+
 
     public void testCustomSchedulerFailure() throws Exception {
       TestFailingCustomScheduledService service = new TestFailingCustomScheduledService();

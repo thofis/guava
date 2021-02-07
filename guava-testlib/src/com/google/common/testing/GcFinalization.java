@@ -20,6 +20,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtIncompatible;
+import com.google.errorprone.annotations.DoNotMock;
 import com.google.j2objc.annotations.J2ObjCIncompatible;
 import java.lang.ref.WeakReference;
 import java.util.Locale;
@@ -66,7 +67,7 @@ import java.util.concurrent.TimeoutException;
  * <p>Here's an example that uses a user-defined finalization predicate:
  *
  * <pre>{@code
- * final WeakHashMap<Object, Object> map = new WeakHashMap<Object, Object>();
+ * final WeakHashMap<Object, Object> map = new WeakHashMap<>();
  * map.put(new Object(), Boolean.TRUE);
  * GcFinalization.awaitDone(new FinalizationPredicate() {
  *   public boolean isDone() {
@@ -82,7 +83,7 @@ import java.util.concurrent.TimeoutException;
  * // Helper function keeps victim stack-unreachable.
  * private WeakReference<Foo> fooWeakRef() {
  *   Foo x = ....;
- *   WeakReference<Foo> weakRef = new WeakReference<Foo>(x);
+ *   WeakReference<Foo> weakRef = new WeakReference<>(x);
  *   // ... use x ...
  *   x = null;  // Hint to the JIT that x is stack-unreachable
  *   return weakRef;
@@ -241,6 +242,7 @@ public final class GcFinalization {
    *   <li>enqueuing weak references to unreachable referents in their reference queue
    * </ul>
    */
+  @DoNotMock("Implement with a lambda")
   public interface FinalizationPredicate {
     boolean isDone();
   }
@@ -264,6 +266,7 @@ public final class GcFinalization {
   public static void awaitClear(final WeakReference<?> ref) {
     awaitDone(
         new FinalizationPredicate() {
+          @Override
           public boolean isDone() {
             return ref.get() == null;
           }

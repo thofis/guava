@@ -29,6 +29,7 @@ import com.google.common.base.Predicates;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Maps.EntryTransformer;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.concurrent.LazyInit;
 import com.google.j2objc.annotations.Weak;
 import com.google.j2objc.annotations.WeakOuter;
 import java.io.IOException;
@@ -49,11 +50,11 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.Spliterator;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Provides static methods acting on or generating a {@code Multimap}.
@@ -104,21 +105,11 @@ public final class Multimaps {
    *
    * @since 21.0
    */
-  @Beta
   public static <T, K, V, M extends Multimap<K, V>> Collector<T, ?, M> toMultimap(
       java.util.function.Function<? super T, ? extends K> keyFunction,
       java.util.function.Function<? super T, ? extends V> valueFunction,
       java.util.function.Supplier<M> multimapSupplier) {
-    checkNotNull(keyFunction);
-    checkNotNull(valueFunction);
-    checkNotNull(multimapSupplier);
-    return Collector.of(
-        multimapSupplier,
-        (multimap, input) -> multimap.put(keyFunction.apply(input), valueFunction.apply(input)),
-        (multimap1, multimap2) -> {
-          multimap1.putAll(multimap2);
-          return multimap1;
-        });
+    return CollectCollectors.toMultimap(keyFunction, valueFunction, multimapSupplier);
   }
 
   /**
@@ -159,20 +150,7 @@ public final class Multimaps {
       java.util.function.Function<? super T, ? extends K> keyFunction,
       java.util.function.Function<? super T, ? extends Stream<? extends V>> valueFunction,
       java.util.function.Supplier<M> multimapSupplier) {
-    checkNotNull(keyFunction);
-    checkNotNull(valueFunction);
-    checkNotNull(multimapSupplier);
-    return Collector.of(
-        multimapSupplier,
-        (multimap, input) -> {
-          K key = keyFunction.apply(input);
-          Collection<V> valuesForKey = multimap.get(key);
-          valueFunction.apply(input).forEachOrdered(valuesForKey::add);
-        },
-        (multimap1, multimap2) -> {
-          multimap1.putAll(multimap2);
-          return multimap1;
-        });
+    return CollectCollectors.flatteningToMultimap(keyFunction, valueFunction, multimapSupplier);
   }
 
   /**
@@ -621,9 +599,6 @@ public final class Multimaps {
    * multimap, either directly or through the multimap's views, result in an {@code
    * UnsupportedOperationException}.
    *
-   * <p>Note that the generated multimap's {@link Multimap#removeAll} and {@link
-   * Multimap#replaceValues} methods return collections that are modifiable.
-   *
    * <p>The returned multimap will be serializable if the specified multimap is serializable.
    *
    * @param delegate the multimap for which an unmodifiable view is to be returned
@@ -650,11 +625,11 @@ public final class Multimaps {
   private static class UnmodifiableMultimap<K, V> extends ForwardingMultimap<K, V>
       implements Serializable {
     final Multimap<K, V> delegate;
-    @MonotonicNonNullDecl transient Collection<Entry<K, V>> entries;
-    @MonotonicNonNullDecl transient Multiset<K> keys;
-    @MonotonicNonNullDecl transient Set<K> keySet;
-    @MonotonicNonNullDecl transient Collection<V> values;
-    @MonotonicNonNullDecl transient Map<K, Collection<V>> map;
+    @LazyInit transient @Nullable Collection<Entry<K, V>> entries;
+    @LazyInit transient @Nullable Multiset<K> keys;
+    @LazyInit transient @Nullable Set<K> keySet;
+    @LazyInit transient @Nullable Collection<V> values;
+    @LazyInit transient @Nullable Map<K, Collection<V>> map;
 
     UnmodifiableMultimap(final Multimap<K, V> delegate) {
       this.delegate = checkNotNull(delegate);
@@ -696,6 +671,11 @@ public final class Multimaps {
         entries = result = unmodifiableEntries(delegate.entries());
       }
       return result;
+    }
+
+    @Override
+    public void forEach(BiConsumer<? super K, ? super V> consumer) {
+      delegate.forEach(checkNotNull(consumer));
     }
 
     @Override
@@ -884,9 +864,6 @@ public final class Multimaps {
    * multimap, either directly or through the multimap's views, result in an {@code
    * UnsupportedOperationException}.
    *
-   * <p>Note that the generated multimap's {@link Multimap#removeAll} and {@link
-   * Multimap#replaceValues} methods return collections that are modifiable.
-   *
    * <p>The returned multimap will be serializable if the specified multimap is serializable.
    *
    * @param delegate the multimap for which an unmodifiable view is to be returned
@@ -933,9 +910,6 @@ public final class Multimaps {
    * returned multimap, either directly or through the multimap's views, result in an {@code
    * UnsupportedOperationException}.
    *
-   * <p>Note that the generated multimap's {@link Multimap#removeAll} and {@link
-   * Multimap#replaceValues} methods return collections that are modifiable.
-   *
    * <p>The returned multimap will be serializable if the specified multimap is serializable.
    *
    * @param delegate the multimap for which an unmodifiable view is to be returned
@@ -966,9 +940,6 @@ public final class Multimaps {
    * returned multimap "read through" to the specified multimap, and attempts to modify the returned
    * multimap, either directly or through the multimap's views, result in an {@code
    * UnsupportedOperationException}.
-   *
-   * <p>Note that the generated multimap's {@link Multimap#removeAll} and {@link
-   * Multimap#replaceValues} methods return collections that are modifiable.
    *
    * <p>The returned multimap will be serializable if the specified multimap is serializable.
    *
@@ -1219,7 +1190,7 @@ public final class Multimaps {
     public Set<Entry<K, V>> entries() {
       return map.entrySet();
     }
-    
+
     @Override
     Collection<Entry<K, V>> createEntries() {
       throw new AssertionError("unreachable");
@@ -1493,7 +1464,7 @@ public final class Multimaps {
     public boolean containsKey(Object key) {
       return fromMultimap.containsKey(key);
     }
-    
+
     @Override
     Collection<Entry<K, V2>> createEntries() {
       return new Entries();
@@ -1737,7 +1708,7 @@ public final class Multimaps {
     }
 
     @Override
-    public boolean contains(@NullableDecl Object element) {
+    public boolean contains(@Nullable Object element) {
       return multimap.containsKey(element);
     }
 
@@ -1747,13 +1718,13 @@ public final class Multimaps {
     }
 
     @Override
-    public int count(@NullableDecl Object element) {
+    public int count(@Nullable Object element) {
       Collection<V> values = Maps.safeGet(multimap.asMap(), element);
       return (values == null) ? 0 : values.size();
     }
 
     @Override
-    public int remove(@NullableDecl Object element, int occurrences) {
+    public int remove(@Nullable Object element, int occurrences) {
       checkNonnegative(occurrences, "occurrences");
       if (occurrences == 0) {
         return count(element);
@@ -1804,7 +1775,7 @@ public final class Multimaps {
     }
 
     @Override
-    public boolean contains(@NullableDecl Object o) {
+    public boolean contains(@Nullable Object o) {
       if (o instanceof Map.Entry) {
         Map.Entry<?, ?> entry = (Map.Entry<?, ?>) o;
         return multimap().containsEntry(entry.getKey(), entry.getValue());
@@ -1813,7 +1784,7 @@ public final class Multimaps {
     }
 
     @Override
-    public boolean remove(@NullableDecl Object o) {
+    public boolean remove(@Nullable Object o) {
       if (o instanceof Map.Entry) {
         Map.Entry<?, ?> entry = (Map.Entry<?, ?>) o;
         return multimap().remove(entry.getKey(), entry.getValue());
@@ -2194,7 +2165,7 @@ public final class Multimaps {
     return new FilteredEntrySetMultimap<>(multimap.unfiltered(), predicate);
   }
 
-  static boolean equalsImpl(Multimap<?, ?> multimap, @NullableDecl Object object) {
+  static boolean equalsImpl(Multimap<?, ?> multimap, @Nullable Object object) {
     if (object == multimap) {
       return true;
     }

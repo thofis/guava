@@ -47,6 +47,7 @@ public class EmptyCachesTest extends TestCase {
     }
   }
 
+
   public void testInvalidate_empty() {
     for (LoadingCache<Object, Object> cache : caches()) {
       cache.getUnchecked("a");
@@ -67,6 +68,7 @@ public class EmptyCachesTest extends TestCase {
       checkEmpty(cache);
     }
   }
+
 
   public void testEquals_null() {
     for (LoadingCache<Object, Object> cache : caches()) {
@@ -113,7 +115,7 @@ public class EmptyCachesTest extends TestCase {
     for (LoadingCache<Object, Object> cache : caches()) {
       Set<Object> keys = cache.asMap().keySet();
       try {
-        keys.toArray(null);
+        keys.toArray((Object[]) null);
         fail();
       } catch (NullPointerException expected) {
       }
@@ -136,6 +138,7 @@ public class EmptyCachesTest extends TestCase {
       }
     }
   }
+
 
   public void testKeySet_clear() {
     for (LoadingCache<Object, Object> cache : caches()) {
@@ -187,7 +190,7 @@ public class EmptyCachesTest extends TestCase {
     for (LoadingCache<Object, Object> cache : caches()) {
       Collection<Object> values = cache.asMap().values();
       try {
-        values.toArray(null);
+        values.toArray((Object[]) null);
         fail();
       } catch (NullPointerException expected) {
       }
@@ -210,6 +213,7 @@ public class EmptyCachesTest extends TestCase {
       }
     }
   }
+
 
   public void testValues_clear() {
     for (LoadingCache<Object, Object> cache : caches()) {
@@ -261,7 +265,7 @@ public class EmptyCachesTest extends TestCase {
     for (LoadingCache<Object, Object> cache : caches()) {
       Set<Entry<Object, Object>> entries = cache.asMap().entrySet();
       try {
-        entries.toArray(null);
+        entries.toArray((Entry<Object, Object>[]) null);
         fail();
       } catch (NullPointerException expected) {
       }
@@ -284,6 +288,7 @@ public class EmptyCachesTest extends TestCase {
       }
     }
   }
+
 
   public void testEntrySet_clear() {
     for (LoadingCache<Object, Object> cache : caches()) {

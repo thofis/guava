@@ -36,8 +36,8 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
  * <p>Advantages compared to {@code double[]}:
  *
  * <ul>
- *   <li>All the many well-known advantages of immutability (read <i>Effective Java</i>, second
- *       edition, Item 15).
+ *   <li>All the many well-known advantages of immutability (read <i>Effective Java</i>, third
+ *       edition, Item 17).
  *   <li>Has the value-based (not identity-based) {@link #equals}, {@link #hashCode}, and {@link
  *       #toString} behavior you expect.
  *   <li>Offers useful operations beyond just {@code get} and {@code length}, so you don't have to
@@ -130,8 +130,7 @@ public final class ImmutableDoubleArray implements Serializable {
   // is okay since we have to copy the just-created array anyway.
   public static ImmutableDoubleArray of(double first, double... rest) {
     checkArgument(
-        rest.length <= Integer.MAX_VALUE - 1,
-        "the total number of elements must fit in an int");
+        rest.length <= Integer.MAX_VALUE - 1, "the total number of elements must fit in an int");
     double[] array = new double[rest.length + 1];
     array[0] = first;
     System.arraycopy(rest, 0, array, 1, rest.length);
@@ -266,9 +265,7 @@ public final class ImmutableDoubleArray implements Serializable {
     private void ensureRoomFor(int numberToAdd) {
       int newCount = count + numberToAdd; // TODO(kevinb): check overflow now?
       if (newCount > array.length) {
-        double[] newArray = new double[expandedCapacity(array.length, newCount)];
-        System.arraycopy(array, 0, newArray, 0, count);
-        this.array = newArray;
+        array = Arrays.copyOf(array, expandedCapacity(array.length, newCount));
       }
     }
 

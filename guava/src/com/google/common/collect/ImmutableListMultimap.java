@@ -16,12 +16,10 @@
 
 package com.google.common.collect;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
-import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import com.google.j2objc.annotations.RetainedWith;
@@ -35,9 +33,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A {@link ListMultimap} whose contents will never change, with many other important properties
@@ -57,8 +54,9 @@ public class ImmutableListMultimap<K, V> extends ImmutableMultimap<K, V>
    * whose keys and values are the result of applying the provided mapping functions to the input
    * elements.
    *
-   * <p>For streams with {@linkplain java.util.stream#Ordering defined encounter order}, that order
-   * is preserved, but entries are <a href="ImmutableMultimap.html#iteration">grouped by key</a>.
+   * <p>For streams with defined encounter order (as defined in the Ordering section of the {@link
+   * java.util.stream} Javadoc), that order is preserved, but entries are <a
+   * href="ImmutableMultimap.html#iteration">grouped by key</a>.
    *
    * <p>Example:
    *
@@ -79,17 +77,10 @@ public class ImmutableListMultimap<K, V> extends ImmutableMultimap<K, V>
    *
    * @since 21.0
    */
-  @Beta
   public static <T, K, V> Collector<T, ?, ImmutableListMultimap<K, V>> toImmutableListMultimap(
       Function<? super T, ? extends K> keyFunction,
       Function<? super T, ? extends V> valueFunction) {
-    checkNotNull(keyFunction, "keyFunction");
-    checkNotNull(valueFunction, "valueFunction");
-    return Collector.of(
-        ImmutableListMultimap::<K, V>builder,
-        (builder, t) -> builder.put(keyFunction.apply(t), valueFunction.apply(t)),
-        ImmutableListMultimap.Builder::combine,
-        ImmutableListMultimap.Builder::build);
+    return CollectCollectors.toImmutableListMultimap(keyFunction, valueFunction);
   }
 
   /**
@@ -123,19 +114,11 @@ public class ImmutableListMultimap<K, V> extends ImmutableMultimap<K, V>
    *
    * @since 21.0
    */
-  @Beta
   public static <T, K, V>
       Collector<T, ?, ImmutableListMultimap<K, V>> flatteningToImmutableListMultimap(
           Function<? super T, ? extends K> keyFunction,
           Function<? super T, ? extends Stream<? extends V>> valuesFunction) {
-    checkNotNull(keyFunction);
-    checkNotNull(valuesFunction);
-    return Collectors.collectingAndThen(
-        Multimaps.flatteningToMultimap(
-            input -> checkNotNull(keyFunction.apply(input)),
-            input -> valuesFunction.apply(input).peek(Preconditions::checkNotNull),
-            MultimapBuilder.linkedHashKeys().arrayListValues()::<K, V>build),
-        ImmutableListMultimap::copyOf);
+    return CollectCollectors.flatteningToImmutableListMultimap(keyFunction, valuesFunction);
   }
 
   /** Returns the empty multimap. */
@@ -365,7 +348,7 @@ public class ImmutableListMultimap<K, V> extends ImmutableMultimap<K, V>
   /** Creates an ImmutableListMultimap from an asMap.entrySet. */
   static <K, V> ImmutableListMultimap<K, V> fromMapEntries(
       Collection<? extends Map.Entry<? extends K, ? extends Collection<? extends V>>> mapEntries,
-      @NullableDecl Comparator<? super V> valueComparator) {
+      @Nullable Comparator<? super V> valueComparator) {
     if (mapEntries.isEmpty()) {
       return of();
     }
@@ -401,7 +384,7 @@ public class ImmutableListMultimap<K, V> extends ImmutableMultimap<K, V>
    * parameters used to build this multimap.
    */
   @Override
-  public ImmutableList<V> get(@NullableDecl K key) {
+  public ImmutableList<V> get(@Nullable K key) {
     // This cast is safe as its type is known in constructor.
     ImmutableList<V> list = (ImmutableList<V>) map.get(key);
     return (list == null) ? ImmutableList.<V>of() : list;

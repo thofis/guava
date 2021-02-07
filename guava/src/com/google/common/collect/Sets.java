@@ -51,8 +51,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Static utility methods pertaining to {@link Set} instances. Also see this class's counterparts
@@ -138,42 +137,6 @@ public final class Sets {
     }
   }
 
-  private static final class Accumulator<E extends Enum<E>> {
-    static final Collector<Enum<?>, ?, ImmutableSet<? extends Enum<?>>> TO_IMMUTABLE_ENUM_SET =
-        (Collector)
-            Collector.<Enum, Accumulator, ImmutableSet<?>>of(
-                Accumulator::new,
-                Accumulator::add,
-                Accumulator::combine,
-                Accumulator::toImmutableSet,
-                Collector.Characteristics.UNORDERED);
-
-    @MonotonicNonNullDecl private EnumSet<E> set;
-
-    void add(E e) {
-      if (set == null) {
-        set = EnumSet.of(e);
-      } else {
-        set.add(e);
-      }
-    }
-
-    Accumulator<E> combine(Accumulator<E> other) {
-      if (this.set == null) {
-        return other;
-      } else if (other.set == null) {
-        return this;
-      } else {
-        this.set.addAll(other.set);
-        return this;
-      }
-    }
-
-    ImmutableSet<E> toImmutableSet() {
-      return (set == null) ? ImmutableSet.<E>of() : ImmutableEnumSet.asImmutable(set);
-    }
-  }
-
   /**
    * Returns a {@code Collector} that accumulates the input elements into a new {@code ImmutableSet}
    * with an implementation specialized for enums. Unlike {@link ImmutableSet#toImmutableSet}, the
@@ -181,9 +144,8 @@ public final class Sets {
    *
    * @since 21.0
    */
-  @Beta
   public static <E extends Enum<E>> Collector<E, ?, ImmutableSet<E>> toImmutableEnumSet() {
-    return (Collector) Accumulator.TO_IMMUTABLE_ENUM_SET;
+    return CollectCollectors.toImmutableEnumSet();
   }
 
   /**
@@ -255,7 +217,7 @@ public final class Sets {
    */
   public static <E> HashSet<E> newHashSet(Iterable<? extends E> elements) {
     return (elements instanceof Collection)
-        ? new HashSet<E>(Collections2.cast(elements))
+        ? new HashSet<E>((Collection<? extends E>) elements)
         : newHashSet(elements.iterator());
   }
 
@@ -360,7 +322,7 @@ public final class Sets {
    */
   public static <E> LinkedHashSet<E> newLinkedHashSet(Iterable<? extends E> elements) {
     if (elements instanceof Collection) {
-      return new LinkedHashSet<E>(Collections2.cast(elements));
+      return new LinkedHashSet<E>((Collection<? extends E>) elements);
     }
     LinkedHashSet<E> set = newLinkedHashSet();
     Iterables.addAll(set, elements);
@@ -488,7 +450,7 @@ public final class Sets {
     // quadratic cost of adding them to the COWAS directly.
     Collection<? extends E> elementsCollection =
         (elements instanceof Collection)
-            ? Collections2.cast(elements)
+            ? (Collection<? extends E>) elements
             : Lists.newArrayList(elements);
     return new CopyOnWriteArraySet<E>(elementsCollection);
   }
@@ -868,7 +830,7 @@ public final class Sets {
 
       @Override
       public boolean isEmpty() {
-        return Collections.disjoint(set1, set2);
+        return Collections.disjoint(set2, set1);
       }
 
       @Override
@@ -1141,7 +1103,7 @@ public final class Sets {
     }
 
     @Override
-    public boolean equals(@NullableDecl Object object) {
+    public boolean equals(@Nullable Object object) {
       return equalsImpl(this, object);
     }
 
@@ -1208,14 +1170,12 @@ public final class Sets {
     }
 
     @Override
-    @NullableDecl
-    public E lower(E e) {
+    public @Nullable E lower(E e) {
       return Iterators.find(unfiltered().headSet(e, false).descendingIterator(), predicate, null);
     }
 
     @Override
-    @NullableDecl
-    public E floor(E e) {
+    public @Nullable E floor(E e) {
       return Iterators.find(unfiltered().headSet(e, true).descendingIterator(), predicate, null);
     }
 
@@ -1322,6 +1282,7 @@ public final class Sets {
    * @return the Cartesian product, as an immutable set containing immutable lists
    * @throws NullPointerException if {@code sets}, any one of the {@code sets}, or any element of a
    *     provided set is null
+   * @throws IllegalArgumentException if the cartesian product size exceeds the {@code int} range
    * @since 2.0
    */
   public static <B> Set<List<B>> cartesianProduct(List<? extends Set<? extends B>> sets) {
@@ -1378,8 +1339,10 @@ public final class Sets {
    * @return the Cartesian product, as an immutable set containing immutable lists
    * @throws NullPointerException if {@code sets}, any one of the {@code sets}, or any element of a
    *     provided set is null
+   * @throws IllegalArgumentException if the cartesian product size exceeds the {@code int} range
    * @since 2.0
    */
+  @SafeVarargs
   public static <B> Set<List<B>> cartesianProduct(Set<? extends B>... sets) {
     return cartesianProduct(Arrays.asList(sets));
   }
@@ -1430,7 +1393,26 @@ public final class Sets {
     }
 
     @Override
-    public boolean equals(@NullableDecl Object object) {
+    public boolean contains(@Nullable Object object) {
+      if (!(object instanceof List)) {
+        return false;
+      }
+      List<?> list = (List<?>) object;
+      if (list.size() != axes.size()) {
+        return false;
+      }
+      int i = 0;
+      for (Object o : list) {
+        if (!axes.get(i).contains(o)) {
+          return false;
+        }
+        i++;
+      }
+      return true;
+    }
+
+    @Override
+    public boolean equals(@Nullable Object object) {
       // Warning: this is broken if size() == 0, so it is critical that we
       // substitute an empty ImmutableSet to the user in place of this
       if (object instanceof CartesianSet) {
@@ -1530,7 +1512,7 @@ public final class Sets {
     }
 
     @Override
-    public boolean contains(@NullableDecl Object o) {
+    public boolean contains(@Nullable Object o) {
       Integer index = inputSet.get(o);
       return index != null && (mask & (1 << index)) != 0;
     }
@@ -1540,9 +1522,9 @@ public final class Sets {
     final ImmutableMap<E, Integer> inputSet;
 
     PowerSet(Set<E> input) {
-      this.inputSet = Maps.indexMap(input);
       checkArgument(
-          inputSet.size() <= 30, "Too many elements to create power set: %s > 30", inputSet.size());
+          input.size() <= 30, "Too many elements to create power set: %s > 30", input.size());
+      this.inputSet = Maps.indexMap(input);
     }
 
     @Override
@@ -1566,7 +1548,7 @@ public final class Sets {
     }
 
     @Override
-    public boolean contains(@NullableDecl Object obj) {
+    public boolean contains(@Nullable Object obj) {
       if (obj instanceof Set) {
         Set<?> set = (Set<?>) obj;
         return inputSet.keySet().containsAll(set);
@@ -1575,10 +1557,10 @@ public final class Sets {
     }
 
     @Override
-    public boolean equals(@NullableDecl Object obj) {
+    public boolean equals(@Nullable Object obj) {
       if (obj instanceof PowerSet) {
         PowerSet<?> that = (PowerSet<?>) obj;
-        return inputSet.equals(that.inputSet);
+        return inputSet.keySet().equals(that.inputSet.keySet());
       }
       return super.equals(obj);
     }
@@ -1635,7 +1617,7 @@ public final class Sets {
     }
     return new AbstractSet<Set<E>>() {
       @Override
-      public boolean contains(@NullableDecl Object o) {
+      public boolean contains(@Nullable Object o) {
         if (o instanceof Set) {
           Set<?> s = (Set<?>) o;
           return s.size() == size && index.keySet().containsAll(s);
@@ -1680,7 +1662,7 @@ public final class Sets {
             final BitSet copy = (BitSet) bits.clone();
             return new AbstractSet<E>() {
               @Override
-              public boolean contains(@NullableDecl Object o) {
+              public boolean contains(@Nullable Object o) {
                 Integer i = index.get(o);
                 return i != null && copy.get(i);
               }
@@ -1735,7 +1717,7 @@ public final class Sets {
   }
 
   /** An implementation for {@link Set#equals(Object)}. */
-  static boolean equalsImpl(Set<?> s, @NullableDecl Object object) {
+  static boolean equalsImpl(Set<?> s, @Nullable Object object) {
     if (s == object) {
       return true;
     }
@@ -1838,7 +1820,7 @@ public final class Sets {
       throw new UnsupportedOperationException();
     }
 
-    @MonotonicNonNullDecl private transient UnmodifiableNavigableSet<E> descendingSet;
+    private transient @Nullable UnmodifiableNavigableSet<E> descendingSet;
 
     @Override
     public NavigableSet<E> descendingSet() {

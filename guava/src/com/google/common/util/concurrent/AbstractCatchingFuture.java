@@ -21,15 +21,17 @@ import static com.google.common.util.concurrent.Platform.isInstanceOfThrowableCl
 
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.base.Function;
+import com.google.common.util.concurrent.internal.InternalFutureFailureAccess;
+import com.google.common.util.concurrent.internal.InternalFutures;
 import com.google.errorprone.annotations.ForOverride;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Implementations of {@code Futures.catching*}. */
 @GwtCompatible
 abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
-    extends AbstractFuture.TrustedFuture<V> implements Runnable {
+    extends FluentFuture.TrustedFuture<V> implements Runnable {
   static <V, X extends Throwable> ListenableFuture<V> create(
       ListenableFuture<? extends V> input,
       Class<X> exceptionType,
@@ -54,9 +56,9 @@ abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
    * In certain circumstances, this field might theoretically not be visible to an afterDone() call
    * triggered by cancel(). For details, see the comments on the fields of TimeoutFuture.
    */
-  @NullableDecl ListenableFuture<? extends V> inputFuture;
-  @NullableDecl Class<X> exceptionType;
-  @NullableDecl F fallback;
+  @Nullable ListenableFuture<? extends V> inputFuture;
+  @Nullable Class<X> exceptionType;
+  @Nullable F fallback;
 
   AbstractCatchingFuture(
       ListenableFuture<? extends V> inputFuture, Class<X> exceptionType, F fallback) {
@@ -70,10 +72,9 @@ abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
     ListenableFuture<? extends V> localInputFuture = inputFuture;
     Class<X> localExceptionType = exceptionType;
     F localFallback = fallback;
-    if (localInputFuture == null
-        | localExceptionType == null
-        | localFallback == null
-        | isCancelled()) {
+    if (localInputFuture == null | localExceptionType == null | localFallback == null
+        // This check, unlike all the others, is a volatile read
+        || isCancelled()) {
       return;
     }
     inputFuture = null;
@@ -82,9 +83,25 @@ abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
     V sourceResult = null;
     Throwable throwable = null;
     try {
-      sourceResult = getDone(localInputFuture);
+      if (localInputFuture instanceof InternalFutureFailureAccess) {
+        throwable =
+            InternalFutures.tryInternalFastPathGetFailure(
+                (InternalFutureFailureAccess) localInputFuture);
+      }
+      if (throwable == null) {
+        sourceResult = getDone(localInputFuture);
+      }
     } catch (ExecutionException e) {
-      throwable = checkNotNull(e.getCause());
+      throwable = e.getCause();
+      if (throwable == null) {
+        throwable =
+            new NullPointerException(
+                "Future type "
+                    + localInputFuture.getClass()
+                    + " threw "
+                    + e.getClass()
+                    + " without a cause");
+      }
     } catch (Throwable e) { // this includes cancellation exception
       throwable = e;
     }
@@ -95,7 +112,7 @@ abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
     }
 
     if (!isInstanceOfThrowableClass(throwable, localExceptionType)) {
-      setException(throwable);
+      setFuture(localInputFuture);
       // TODO(cpovirk): Test that fallback is not run in this case.
       return;
     }
@@ -141,12 +158,11 @@ abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
 
   /** Template method for subtypes to actually run the fallback. */
   @ForOverride
-  @NullableDecl
-  abstract T doFallback(F fallback, X throwable) throws Exception;
+  abstract @Nullable T doFallback(F fallback, X throwable) throws Exception;
 
   /** Template method for subtypes to actually set the result. */
   @ForOverride
-  abstract void setResult(@NullableDecl T result);
+  abstract void setResult(@Nullable T result);
 
   @Override
   protected final void afterDone() {
@@ -177,7 +193,8 @@ abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
       checkNotNull(
           replacement,
           "AsyncFunction.apply returned null instead of a Future. "
-              + "Did you mean to return immediateFuture(null)?");
+              + "Did you mean to return immediateFuture(null)? %s",
+          fallback);
       return replacement;
     }
 
@@ -201,13 +218,13 @@ abstract class AbstractCatchingFuture<V, X extends Throwable, F, T>
     }
 
     @Override
-    @NullableDecl
+    @Nullable
     V doFallback(Function<? super X, ? extends V> fallback, X cause) throws Exception {
       return fallback.apply(cause);
     }
 
     @Override
-    void setResult(@NullableDecl V result) {
+    void setResult(@Nullable V result) {
       set(result);
     }
   }

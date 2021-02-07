@@ -46,7 +46,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
 import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 /**
@@ -104,10 +103,10 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
   private final Type runtimeType;
 
   /** Resolver for resolving parameter and field types with {@link #runtimeType} as context. */
-  @MonotonicNonNullDecl private transient TypeResolver invariantTypeResolver;
+  @NullableDecl private transient TypeResolver invariantTypeResolver;
 
   /** Resolver for resolving covariant types with {@link #runtimeType} as context. */
-  @MonotonicNonNullDecl private transient TypeResolver covariantTypeResolver;
+  @NullableDecl private transient TypeResolver covariantTypeResolver;
 
   /**
    * Constructs a new type token of {@code T}.
@@ -656,7 +655,7 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
    */
   public class TypeSet extends ForwardingSet<TypeToken<? super T>> implements Serializable {
 
-    @MonotonicNonNullDecl private transient ImmutableSet<TypeToken<? super T>> types;
+    @NullableDecl private transient ImmutableSet<TypeToken<? super T>> types;
 
     TypeSet() {}
 
@@ -702,7 +701,7 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
   private final class InterfaceSet extends TypeSet {
 
     private final transient TypeSet allTypes;
-    @MonotonicNonNullDecl private transient ImmutableSet<TypeToken<? super T>> interfaces;
+    @NullableDecl private transient ImmutableSet<TypeToken<? super T>> interfaces;
 
     InterfaceSet(TypeSet allTypes) {
       this.allTypes = allTypes;
@@ -755,7 +754,7 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
 
   private final class ClassSet extends TypeSet {
 
-    @MonotonicNonNullDecl private transient ImmutableSet<TypeToken<? super T>> classes;
+    @NullableDecl private transient ImmutableSet<TypeToken<? super T>> classes;
 
     @Override
     protected Set<TypeToken<? super T>> delegate() {
@@ -947,26 +946,27 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
    * {@code A.is(B)} is defined as {@code Foo<A>.isSubtypeOf(Foo<B>)}.
    *
    * <p>Specifically, returns true if any of the following conditions is met:
+   *
    * <ol>
    *   <li>'this' and {@code formalType} are equal.
    *   <li>'this' and {@code formalType} have equal canonical form.
    *   <li>{@code formalType} is {@code <? extends Foo>} and 'this' is a subtype of {@code Foo}.
    *   <li>{@code formalType} is {@code <? super Foo>} and 'this' is a supertype of {@code Foo}.
    * </ol>
-   * Note that condition 2 isn't technically accurate under the context of a recursively
-   * bounded type variables. For example, {@code Enum<? extends Enum<E>>} canonicalizes to
-   * {@code Enum<?>} where {@code E} is the type variable declared on the {@code Enum} class
-   * declaration. It's technically <em>not</em> true that {@code Foo<Enum<? extends Enum<E>>>} is a
-   * subtype of {@code Foo<Enum<?>>} according to JLS. See testRecursiveWildcardSubtypeBug() for
-   * a real example.
+   *
+   * Note that condition 2 isn't technically accurate under the context of a recursively bounded
+   * type variables. For example, {@code Enum<? extends Enum<E>>} canonicalizes to {@code Enum<?>}
+   * where {@code E} is the type variable declared on the {@code Enum} class declaration. It's
+   * technically <em>not</em> true that {@code Foo<Enum<? extends Enum<E>>>} is a subtype of {@code
+   * Foo<Enum<?>>} according to JLS. See testRecursiveWildcardSubtypeBug() for a real example.
    *
    * <p>It appears that properly handling recursive type bounds in the presence of implicit type
    * bounds is not easy. For now we punt, hoping that this defect should rarely cause issues in real
    * code.
    *
    * @param formalType is {@code Foo<formalType>} a supertype of {@code Foo<T>}?
-   * @param declaration The type variable in the context of a parameterized type. Used to infer
-   *        type bound when {@code formalType} is a wildcard with implicit upper bound.
+   * @param declaration The type variable in the context of a parameterized type. Used to infer type
+   *     bound when {@code formalType} is a wildcard with implicit upper bound.
    */
   private boolean is(Type formalType, TypeVariable<?> declaration) {
     if (runtimeType.equals(formalType)) {
@@ -982,8 +982,7 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
       return every(your.getUpperBounds()).isSupertypeOf(runtimeType)
           && every(your.getLowerBounds()).isSubtypeOf(runtimeType);
     }
-    return canonicalizeWildcardsInType(runtimeType)
-        .equals(canonicalizeWildcardsInType(formalType));
+    return canonicalizeWildcardsInType(runtimeType).equals(canonicalizeWildcardsInType(formalType));
   }
 
   /**
@@ -991,16 +990,17 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
    * is defined as {@code Foo<T extends String>}. Thus directly calling {@code <?>.is(String.class)}
    * will return false. To mitigate, we canonicalize wildcards by enforcing the following
    * invariants:
+   *
    * <ol>
-   * <li>{@code canonicalize(t)} always produces the equal result for equivalent types. For example
-   *     both {@code Enum<?>} and {@code Enum<? extends Enum<?>>} canonicalize to
-   *     {@code Enum<? extends Enum<E>}.
-   * <li>{@code canonicalize(t)} produces a "literal" supertype of t.
-   *     For example: {@code Enum<? extends Enum<?>>} canonicalizes to {@code Enum<?>}, which is
-   *     a supertype (if we disregard the upper bound is implicitly an Enum too).
-   * <li>If {@code canonicalize(A) == canonicalize(B)}, then {@code Foo<A>.isSubtypeOf(Foo<B>)} and
-   *     vice versa. i.e. {@code A.is(B)} and {@code B.is(A)}.
-   * <li>{@code canonicalize(canonicalize(A)) == canonicalize(A)}.
+   *   <li>{@code canonicalize(t)} always produces the equal result for equivalent types. For
+   *       example both {@code Enum<?>} and {@code Enum<? extends Enum<?>>} canonicalize to {@code
+   *       Enum<? extends Enum<E>}.
+   *   <li>{@code canonicalize(t)} produces a "literal" supertype of t. For example: {@code Enum<?
+   *       extends Enum<?>>} canonicalizes to {@code Enum<?>}, which is a supertype (if we disregard
+   *       the upper bound is implicitly an Enum too).
+   *   <li>If {@code canonicalize(A) == canonicalize(B)}, then {@code Foo<A>.isSubtypeOf(Foo<B>)}
+   *       and vice versa. i.e. {@code A.is(B)} and {@code B.is(A)}.
+   *   <li>{@code canonicalize(canonicalize(A)) == canonicalize(A)}.
    * </ol>
    */
   private static Type canonicalizeTypeArg(TypeVariable<?> declaration, Type typeArg) {
@@ -1210,9 +1210,9 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
   }
 
   private TypeToken<? extends T> getSubtypeFromLowerBounds(Class<?> subclass, Type[] lowerBounds) {
-    for (Type lowerBound : lowerBounds) {
+    if (lowerBounds.length > 0) {
       @SuppressWarnings("unchecked") // T's lower bound is <? extends T>
-      TypeToken<? extends T> bound = (TypeToken<? extends T>) of(lowerBound);
+      TypeToken<? extends T> bound = (TypeToken<? extends T>) of(lowerBounds[0]);
       // Java supports only one lowerbound anyway.
       return bound.getSubtype(subclass);
     }
@@ -1310,8 +1310,8 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
             return type.getGenericInterfaces();
           }
 
-          @NullableDecl
           @Override
+          @NullableDecl
           TypeToken<?> getSuperclass(TypeToken<?> type) {
             return type.getGenericSuperclass();
           }
@@ -1329,8 +1329,8 @@ public abstract class TypeToken<T> extends TypeCapture<T> implements Serializabl
             return Arrays.asList(type.getInterfaces());
           }
 
-          @NullableDecl
           @Override
+          @NullableDecl
           Class<?> getSuperclass(Class<?> type) {
             return type.getSuperclass();
           }

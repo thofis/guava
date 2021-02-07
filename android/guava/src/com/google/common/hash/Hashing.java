@@ -87,6 +87,7 @@ public final class Hashing {
    * Used to randomize {@link #goodFastHash} instances, so that programs which persist anything
    * dependent on the hash codes they produce will fail sooner.
    */
+  @SuppressWarnings("GoodTime") // reading system time without TimeSource
   static final int GOOD_FAST_HASH_SEED = (int) System.currentTimeMillis();
 
   /**
@@ -233,7 +234,6 @@ public final class Hashing {
    * Returns a hash function implementing the Message Authentication Code (MAC) algorithm, using the
    * MD5 (128 hash bits) hash function and the given secret key.
    *
-   *
    * @param key the secret key
    * @throws IllegalArgumentException if the given key is inappropriate for initializing this MAC
    * @since 20.0
@@ -247,7 +247,6 @@ public final class Hashing {
    * MD5 (128 hash bits) hash function and a {@link SecretKeySpec} created from the given byte array
    * and the MD5 algorithm.
    *
-   *
    * @param key the key material of the secret key
    * @since 20.0
    */
@@ -258,7 +257,6 @@ public final class Hashing {
   /**
    * Returns a hash function implementing the Message Authentication Code (MAC) algorithm, using the
    * SHA-1 (160 hash bits) hash function and the given secret key.
-   *
    *
    * @param key the secret key
    * @throws IllegalArgumentException if the given key is inappropriate for initializing this MAC
@@ -273,7 +271,6 @@ public final class Hashing {
    * SHA-1 (160 hash bits) hash function and a {@link SecretKeySpec} created from the given byte
    * array and the SHA-1 algorithm.
    *
-   *
    * @param key the key material of the secret key
    * @since 20.0
    */
@@ -284,7 +281,6 @@ public final class Hashing {
   /**
    * Returns a hash function implementing the Message Authentication Code (MAC) algorithm, using the
    * SHA-256 (256 hash bits) hash function and the given secret key.
-   *
    *
    * @param key the secret key
    * @throws IllegalArgumentException if the given key is inappropriate for initializing this MAC
@@ -299,7 +295,6 @@ public final class Hashing {
    * SHA-256 (256 hash bits) hash function and a {@link SecretKeySpec} created from the given byte
    * array and the SHA-256 algorithm.
    *
-   *
    * @param key the key material of the secret key
    * @since 20.0
    */
@@ -310,7 +305,6 @@ public final class Hashing {
   /**
    * Returns a hash function implementing the Message Authentication Code (MAC) algorithm, using the
    * SHA-512 (512 hash bits) hash function and the given secret key.
-   *
    *
    * @param key the secret key
    * @throws IllegalArgumentException if the given key is inappropriate for initializing this MAC
@@ -324,7 +318,6 @@ public final class Hashing {
    * Returns a hash function implementing the Message Authentication Code (MAC) algorithm, using the
    * SHA-512 (512 hash bits) hash function and a {@link SecretKeySpec} created from the given byte
    * array and the SHA-512 algorithm.
-   *
    *
    * @param key the key material of the secret key
    * @since 20.0
@@ -456,7 +449,6 @@ public final class Hashing {
    *       traffic to {@code charlie}, rather than letting {@code bravo} keep its traffic.
    * </ul>
    *
-   *
    * <p>See the <a href="http://en.wikipedia.org/wiki/Consistent_hashing">Wikipedia article on
    * consistent hashing</a> for more information.
    */
@@ -490,7 +482,6 @@ public final class Hashing {
    *       assign all the old {@code alpha} traffic to {@code bravo} and all the old {@code bravo}
    *       traffic to {@code charlie}, rather than letting {@code bravo} keep its traffic.
    * </ul>
-   *
    *
    * <p>See the <a href="http://en.wikipedia.org/wiki/Consistent_hashing">Wikipedia article on
    * consistent hashing</a> for more information.
@@ -609,25 +600,21 @@ public final class Hashing {
   }
 
   private static final class ConcatenatedHashFunction extends AbstractCompositeHashFunction {
-    private final int bits;
 
     private ConcatenatedHashFunction(HashFunction... functions) {
       super(functions);
-      int bitSum = 0;
       for (HashFunction function : functions) {
-        bitSum += function.bits();
         checkArgument(
             function.bits() % 8 == 0,
             "the number of bits (%s) in hashFunction (%s) must be divisible by 8",
             function.bits(),
             function);
       }
-      this.bits = bitSum;
     }
 
     @Override
     HashCode makeHash(Hasher[] hashers) {
-      byte[] bytes = new byte[bits / 8];
+      byte[] bytes = new byte[bits() / 8];
       int i = 0;
       for (Hasher hasher : hashers) {
         HashCode newHash = hasher.hash();
@@ -638,7 +625,11 @@ public final class Hashing {
 
     @Override
     public int bits() {
-      return bits;
+      int bitSum = 0;
+      for (HashFunction function : functions) {
+        bitSum += function.bits();
+      }
+      return bitSum;
     }
 
     @Override
@@ -652,7 +643,7 @@ public final class Hashing {
 
     @Override
     public int hashCode() {
-      return Arrays.hashCode(functions) * 31 + bits;
+      return Arrays.hashCode(functions);
     }
   }
 
@@ -669,7 +660,7 @@ public final class Hashing {
 
     public double nextDouble() {
       state = 2862933555777941757L * state + 1;
-      return ((double) ((int) (state >>> 33) + 1)) / (0x1.0p31);
+      return ((double) ((int) (state >>> 33) + 1)) / 0x1.0p31;
     }
   }
 

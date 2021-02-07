@@ -22,7 +22,7 @@ import com.google.common.collect.Maps;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * This class provides a skeletal implementation of {@link ValueGraph}. It is recommended to extend
@@ -69,6 +69,11 @@ public abstract class AbstractValueGraph<N, V> extends AbstractBaseGraph<N>
       }
 
       @Override
+      public ElementOrder<N> incidentEdgeOrder() {
+        return AbstractValueGraph.this.incidentEdgeOrder();
+      }
+
+      @Override
       public Set<N> adjacentNodes(N node) {
         return AbstractValueGraph.this.adjacentNodes(node);
       }
@@ -106,7 +111,12 @@ public abstract class AbstractValueGraph<N, V> extends AbstractBaseGraph<N>
   }
 
   @Override
-  public final boolean equals(@NullableDecl Object obj) {
+  public Optional<V> edgeValue(EndpointPair<N> endpoints) {
+    return Optional.ofNullable(edgeValueOrDefault(endpoints, null));
+  }
+
+  @Override
+  public final boolean equals(@Nullable Object obj) {
     if (obj == this) {
       return true;
     }

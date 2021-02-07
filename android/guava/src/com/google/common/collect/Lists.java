@@ -33,7 +33,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.math.IntMath;
 import com.google.common.primitives.Ints;
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.Serializable;
 import java.math.RoundingMode;
 import java.util.AbstractList;
@@ -98,7 +97,6 @@ public final class Lists {
    * not actually very useful and will likely be deprecated in the future.
    */
   @SafeVarargs
-  @CanIgnoreReturnValue // TODO(kak): Remove this
   @GwtCompatible(serializable = true)
   public static <E> ArrayList<E> newArrayList(E... elements) {
     checkNotNull(elements); // for GWT
@@ -122,13 +120,12 @@ public final class Lists {
    * constructor} directly, taking advantage of the new <a href="http://goo.gl/iz2Wi">"diamond"
    * syntax</a>.
    */
-  @CanIgnoreReturnValue // TODO(kak): Remove this
   @GwtCompatible(serializable = true)
   public static <E> ArrayList<E> newArrayList(Iterable<? extends E> elements) {
     checkNotNull(elements); // for GWT
     // Let ArrayList's sizing logic work, if possible
     return (elements instanceof Collection)
-        ? new ArrayList<>(Collections2.cast(elements))
+        ? new ArrayList<>((Collection<? extends E>) elements)
         : newArrayList(elements.iterator());
   }
 
@@ -139,7 +136,6 @@ public final class Lists {
    * <p><b>Note:</b> if mutability is not required and the elements are non-null, use {@link
    * ImmutableList#copyOf(Iterator)} instead.
    */
-  @CanIgnoreReturnValue // TODO(kak): Remove this
   @GwtCompatible(serializable = true)
   public static <E> ArrayList<E> newArrayList(Iterator<? extends E> elements) {
     ArrayList<E> list = newArrayList();
@@ -268,7 +264,9 @@ public final class Lists {
     // We copy elements to an ArrayList first, rather than incurring the
     // quadratic cost of adding them to the COWAL directly.
     Collection<? extends E> elementsCollection =
-        (elements instanceof Collection) ? Collections2.cast(elements) : newArrayList(elements);
+        (elements instanceof Collection)
+            ? (Collection<? extends E>) elements
+            : newArrayList(elements);
     return new CopyOnWriteArrayList<>(elementsCollection);
   }
 

@@ -27,8 +27,7 @@ import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A specification of a {@link CacheBuilder} configuration.
@@ -77,11 +76,12 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
  * @author Adam Winer
  * @since 12.0
  */
+@SuppressWarnings("GoodTime") // lots of violations (nanosecond math)
 @GwtIncompatible
 public final class CacheBuilderSpec {
   /** Parses a single value. */
   private interface ValueParser {
-    void parse(CacheBuilderSpec spec, String key, @NullableDecl String value);
+    void parse(CacheBuilderSpec spec, String key, @Nullable String value);
   }
 
   /** Splits each key-value pair. */
@@ -107,19 +107,19 @@ public final class CacheBuilderSpec {
           .put("refreshInterval", new RefreshDurationParser())
           .build();
 
-  @MonotonicNonNullDecl @VisibleForTesting Integer initialCapacity;
-  @MonotonicNonNullDecl @VisibleForTesting Long maximumSize;
-  @MonotonicNonNullDecl @VisibleForTesting Long maximumWeight;
-  @MonotonicNonNullDecl @VisibleForTesting Integer concurrencyLevel;
-  @MonotonicNonNullDecl @VisibleForTesting Strength keyStrength;
-  @MonotonicNonNullDecl @VisibleForTesting Strength valueStrength;
-  @MonotonicNonNullDecl @VisibleForTesting Boolean recordStats;
+  @VisibleForTesting @Nullable Integer initialCapacity;
+  @VisibleForTesting @Nullable Long maximumSize;
+  @VisibleForTesting @Nullable Long maximumWeight;
+  @VisibleForTesting @Nullable Integer concurrencyLevel;
+  @VisibleForTesting @Nullable Strength keyStrength;
+  @VisibleForTesting @Nullable Strength valueStrength;
+  @VisibleForTesting @Nullable Boolean recordStats;
   @VisibleForTesting long writeExpirationDuration;
-  @MonotonicNonNullDecl @VisibleForTesting TimeUnit writeExpirationTimeUnit;
+  @VisibleForTesting @Nullable TimeUnit writeExpirationTimeUnit;
   @VisibleForTesting long accessExpirationDuration;
-  @MonotonicNonNullDecl @VisibleForTesting TimeUnit accessExpirationTimeUnit;
+  @VisibleForTesting @Nullable TimeUnit accessExpirationTimeUnit;
   @VisibleForTesting long refreshDuration;
-  @MonotonicNonNullDecl @VisibleForTesting TimeUnit refreshTimeUnit;
+  @VisibleForTesting @Nullable TimeUnit refreshTimeUnit;
   /** Specification; used for toParseableString(). */
   private final String specification;
 
@@ -248,7 +248,7 @@ public final class CacheBuilderSpec {
   }
 
   @Override
-  public boolean equals(@NullableDecl Object obj) {
+  public boolean equals(@Nullable Object obj) {
     if (this == obj) {
       return true;
     }
@@ -278,8 +278,7 @@ public final class CacheBuilderSpec {
    * Converts an expiration duration/unit pair into a single Long for hashing and equality. Uses
    * nanos to match CacheBuilder implementation.
    */
-  @NullableDecl
-  private static Long durationInNanos(long duration, @NullableDecl TimeUnit unit) {
+  private static @Nullable Long durationInNanos(long duration, @Nullable TimeUnit unit) {
     return (unit == null) ? null : unit.toNanos(duration);
   }
 
@@ -370,7 +369,7 @@ public final class CacheBuilderSpec {
     }
 
     @Override
-    public void parse(CacheBuilderSpec spec, String key, @NullableDecl String value) {
+    public void parse(CacheBuilderSpec spec, String key, @Nullable String value) {
       checkArgument(value == null, "key %s does not take values", key);
       checkArgument(spec.keyStrength == null, "%s was already set to %s", key, spec.keyStrength);
       spec.keyStrength = strength;
@@ -386,7 +385,7 @@ public final class CacheBuilderSpec {
     }
 
     @Override
-    public void parse(CacheBuilderSpec spec, String key, @NullableDecl String value) {
+    public void parse(CacheBuilderSpec spec, String key, @Nullable String value) {
       checkArgument(value == null, "key %s does not take values", key);
       checkArgument(
           spec.valueStrength == null, "%s was already set to %s", key, spec.valueStrength);
@@ -399,7 +398,7 @@ public final class CacheBuilderSpec {
   static class RecordStatsParser implements ValueParser {
 
     @Override
-    public void parse(CacheBuilderSpec spec, String key, @NullableDecl String value) {
+    public void parse(CacheBuilderSpec spec, String key, @Nullable String value) {
       checkArgument(value == null, "recordStats does not take values");
       checkArgument(spec.recordStats == null, "recordStats already set");
       spec.recordStats = true;

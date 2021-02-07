@@ -35,8 +35,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.Spliterator;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Fixed-size {@link Table} implementation backed by a two-dimensional array.
@@ -142,7 +141,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
      * TODO(jlevy): Support only one of rowKey / columnKey being empty? If we
      * do, when columnKeys is empty but rowKeys isn't, rowKeyList() can contain
      * elements but rowKeySet() will be empty and containsRow() won't
-     * acknolwedge them.
+     * acknowledge them.
      */
     rowKeyToIndex = Maps.indexMap(rowList);
     columnKeyToIndex = Maps.indexMap(columnList);
@@ -190,11 +189,9 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
 
     abstract String getKeyRole();
 
-    @NullableDecl
-    abstract V getValue(int index);
+    abstract @Nullable V getValue(int index);
 
-    @NullableDecl
-    abstract V setValue(int index, V newValue);
+    abstract @Nullable V setValue(int index, V newValue);
 
     @Override
     public int size() {
@@ -244,12 +241,12 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
     // TODO(lowasser): consider an optimized values() implementation
 
     @Override
-    public boolean containsKey(@NullableDecl Object key) {
+    public boolean containsKey(@Nullable Object key) {
       return keyIndex.containsKey(key);
     }
 
     @Override
-    public V get(@NullableDecl Object key) {
+    public V get(@Nullable Object key) {
       Integer index = keyIndex.get(key);
       if (index == null) {
         return null;
@@ -328,7 +325,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
    *     to the number of allowed column keys
    */
   @CanIgnoreReturnValue
-  public V set(int rowIndex, int columnIndex, @NullableDecl V value) {
+  public V set(int rowIndex, int columnIndex, @Nullable V value) {
     // In GWT array access never throws IndexOutOfBoundsException.
     checkElementIndex(rowIndex, rowList.size());
     checkElementIndex(columnIndex, columnList.size());
@@ -380,7 +377,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
    * constructed.
    */
   @Override
-  public boolean contains(@NullableDecl Object rowKey, @NullableDecl Object columnKey) {
+  public boolean contains(@Nullable Object rowKey, @Nullable Object columnKey) {
     return containsRow(rowKey) && containsColumn(columnKey);
   }
 
@@ -389,7 +386,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
    * table was constructed.
    */
   @Override
-  public boolean containsColumn(@NullableDecl Object columnKey) {
+  public boolean containsColumn(@Nullable Object columnKey) {
     return columnKeyToIndex.containsKey(columnKey);
   }
 
@@ -398,12 +395,12 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
    * constructed.
    */
   @Override
-  public boolean containsRow(@NullableDecl Object rowKey) {
+  public boolean containsRow(@Nullable Object rowKey) {
     return rowKeyToIndex.containsKey(rowKey);
   }
 
   @Override
-  public boolean containsValue(@NullableDecl Object value) {
+  public boolean containsValue(@Nullable Object value) {
     for (V[] row : array) {
       for (V element : row) {
         if (Objects.equal(value, element)) {
@@ -415,7 +412,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
   }
 
   @Override
-  public V get(@NullableDecl Object rowKey, @NullableDecl Object columnKey) {
+  public V get(@Nullable Object rowKey, @Nullable Object columnKey) {
     Integer rowIndex = rowKeyToIndex.get(rowKey);
     Integer columnIndex = columnKeyToIndex.get(columnKey);
     return (rowIndex == null || columnIndex == null) ? null : at(rowIndex, columnIndex);
@@ -437,7 +434,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
    */
   @CanIgnoreReturnValue
   @Override
-  public V put(R rowKey, C columnKey, @NullableDecl V value) {
+  public V put(R rowKey, C columnKey, @Nullable V value) {
     checkNotNull(rowKey);
     checkNotNull(columnKey);
     Integer rowIndex = rowKeyToIndex.get(rowKey);
@@ -494,7 +491,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
    *     for the keys
    */
   @CanIgnoreReturnValue
-  public V erase(@NullableDecl Object rowKey, @NullableDecl Object columnKey) {
+  public V erase(@Nullable Object rowKey, @Nullable Object columnKey) {
     Integer rowIndex = rowKeyToIndex.get(rowKey);
     Integer columnIndex = columnKeyToIndex.get(columnKey);
     if (rowIndex == null || columnIndex == null) {
@@ -623,7 +620,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
     return columnKeyToIndex.keySet();
   }
 
-  @MonotonicNonNullDecl private transient ColumnMap columnMap;
+  private transient @Nullable ColumnMap columnMap;
 
   @Override
   public Map<C, Map<R, V>> columnMap() {
@@ -711,7 +708,7 @@ public final class ArrayTable<R, C, V> extends AbstractTable<R, C, V> implements
     return rowKeyToIndex.keySet();
   }
 
-  @MonotonicNonNullDecl private transient RowMap rowMap;
+  private transient @Nullable RowMap rowMap;
 
   @Override
   public Map<R, Map<C, V>> rowMap() {

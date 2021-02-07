@@ -16,6 +16,8 @@
 
 package com.google.common.util.concurrent;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -49,15 +51,18 @@ public class SettableFutureTest extends TestCase {
     }
   }
 
+
   public void testSetValue() throws Exception {
     assertTrue(future.set("value"));
     tester.testCompletedFuture("value");
   }
 
+
   public void testSetFailure() throws Exception {
     assertTrue(future.setException(new Exception("failure")));
     tester.testFailedFuture("failure");
   }
+
 
   public void testSetFailureNull() throws Exception {
     try {
@@ -69,6 +74,7 @@ public class SettableFutureTest extends TestCase {
     assertTrue(future.setException(new Exception("failure")));
     tester.testFailedFuture("failure");
   }
+
 
   public void testCancel() throws Exception {
     assertTrue(future.cancel(true));
@@ -110,7 +116,7 @@ public class SettableFutureTest extends TestCase {
       future.get();
       fail("Expected ExecutionException");
     } catch (ExecutionException ee) {
-      assertSame(e, ee.getCause());
+      assertThat(ee).hasCauseThat().isSameInstanceAs(e);
     }
   }
 

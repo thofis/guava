@@ -176,7 +176,6 @@ public final class BloomFilter<T> implements Predicate<T>, Serializable {
    * @since 14.0 (since 11.0 as expectedFalsePositiveProbability())
    */
   public double expectedFpp() {
-    // You down with FPP? (Yeah you know me!) Who's down with FPP? (Every last homie!)
     return Math.pow((double) bits.bitCount() / bitSize(), numHashFunctions);
   }
 
@@ -225,11 +224,11 @@ public final class BloomFilter<T> implements Predicate<T>, Serializable {
    */
   public boolean isCompatible(BloomFilter<T> that) {
     checkNotNull(that);
-    return (this != that)
-        && (this.numHashFunctions == that.numHashFunctions)
-        && (this.bitSize() == that.bitSize())
-        && (this.strategy.equals(that.strategy))
-        && (this.funnel.equals(that.funnel));
+    return this != that
+        && this.numHashFunctions == that.numHashFunctions
+        && this.bitSize() == that.bitSize()
+        && this.strategy.equals(that.strategy)
+        && this.funnel.equals(that.funnel);
   }
 
   /**

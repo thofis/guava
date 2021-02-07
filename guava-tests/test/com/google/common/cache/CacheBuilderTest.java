@@ -23,6 +23,7 @@ import static com.google.common.cache.TestingRemovalListeners.nullRemovalListene
 import static com.google.common.cache.TestingRemovalListeners.queuingRemovalListener;
 import static com.google.common.cache.TestingWeighers.constantWeigher;
 import static com.google.common.truth.Truth.assertThat;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -41,7 +42,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import junit.framework.TestCase;
@@ -171,6 +171,14 @@ public class CacheBuilderTest extends TestCase {
     }
   }
 
+  @GwtIncompatible // digs into internals of the non-GWT implementation
+  public void testMaximumSize_largerThanInt() {
+    CacheBuilder<Object, Object> builder =
+        CacheBuilder.newBuilder().initialCapacity(512).maximumSize(Long.MAX_VALUE);
+    LocalCache<?, ?> cache = ((LocalCache.LocalManualCache<?, ?>) builder.build()).localCache;
+    assertThat(cache.segments.length * cache.segments[0].table.length()).isEqualTo(512);
+  }
+
   @GwtIncompatible // maximumWeight
   public void testMaximumWeight_negative() {
     CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
@@ -268,6 +276,16 @@ public class CacheBuilderTest extends TestCase {
     }
   }
 
+  @GwtIncompatible // java.time.Duration
+  public void testLargeDurationsAreOk() {
+    java.time.Duration threeHundredYears = java.time.Duration.ofDays(365 * 300);
+    CacheBuilder<Object, Object> builder =
+        CacheBuilder.newBuilder()
+            .expireAfterWrite(threeHundredYears)
+            .expireAfterAccess(threeHundredYears)
+            .refreshAfterWrite(threeHundredYears);
+  }
+
   public void testTimeToLive_negative() {
     CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
     try {
@@ -277,6 +295,17 @@ public class CacheBuilderTest extends TestCase {
     }
   }
 
+  @GwtIncompatible // java.time.Duration
+  public void testTimeToLive_negative_duration() {
+    CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
+    try {
+      builder.expireAfterWrite(java.time.Duration.ofSeconds(-1));
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+  }
+
+  @SuppressWarnings("ReturnValueIgnored")
   public void testTimeToLive_small() {
     CacheBuilder.newBuilder().expireAfterWrite(1, NANOSECONDS).build(identityLoader());
     // well, it didn't blow up.
@@ -293,6 +322,18 @@ public class CacheBuilderTest extends TestCase {
     }
   }
 
+  @GwtIncompatible // java.time.Duration
+  public void testTimeToLive_setTwice_duration() {
+    CacheBuilder<Object, Object> builder =
+        CacheBuilder.newBuilder().expireAfterWrite(java.time.Duration.ofSeconds(3600));
+    try {
+      // even to the same value is not allowed
+      builder.expireAfterWrite(java.time.Duration.ofSeconds(3600));
+      fail();
+    } catch (IllegalStateException expected) {
+    }
+  }
+
   public void testTimeToIdle_negative() {
     CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
     try {
@@ -302,6 +343,17 @@ public class CacheBuilderTest extends TestCase {
     }
   }
 
+  @GwtIncompatible // java.time.Duration
+  public void testTimeToIdle_negative_duration() {
+    CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
+    try {
+      builder.expireAfterAccess(java.time.Duration.ofSeconds(-1));
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+  }
+
+  @SuppressWarnings("ReturnValueIgnored")
   public void testTimeToIdle_small() {
     CacheBuilder.newBuilder().expireAfterAccess(1, NANOSECONDS).build(identityLoader());
     // well, it didn't blow up.
@@ -318,6 +370,19 @@ public class CacheBuilderTest extends TestCase {
     }
   }
 
+  @GwtIncompatible // java.time.Duration
+  public void testTimeToIdle_setTwice_duration() {
+    CacheBuilder<Object, Object> builder =
+        CacheBuilder.newBuilder().expireAfterAccess(java.time.Duration.ofSeconds(3600));
+    try {
+      // even to the same value is not allowed
+      builder.expireAfterAccess(java.time.Duration.ofSeconds(3600));
+      fail();
+    } catch (IllegalStateException expected) {
+    }
+  }
+
+  @SuppressWarnings("ReturnValueIgnored")
   public void testTimeToIdleAndToLive() {
     CacheBuilder.newBuilder()
         .expireAfterWrite(1, NANOSECONDS)
@@ -336,6 +401,16 @@ public class CacheBuilderTest extends TestCase {
     }
   }
 
+  @GwtIncompatible // java.time.Duration
+  public void testRefresh_zero_duration() {
+    CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
+    try {
+      builder.refreshAfterWrite(java.time.Duration.ZERO);
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+  }
+
   @GwtIncompatible // refreshAfterWrite
   public void testRefresh_setTwice() {
     CacheBuilder<Object, Object> builder =
@@ -343,6 +418,18 @@ public class CacheBuilderTest extends TestCase {
     try {
       // even to the same value is not allowed
       builder.refreshAfterWrite(3600, SECONDS);
+      fail();
+    } catch (IllegalStateException expected) {
+    }
+  }
+
+  @GwtIncompatible // java.time.Duration
+  public void testRefresh_setTwice_duration() {
+    CacheBuilder<Object, Object> builder =
+        CacheBuilder.newBuilder().refreshAfterWrite(java.time.Duration.ofSeconds(3600));
+    try {
+      // even to the same value is not allowed
+      builder.refreshAfterWrite(java.time.Duration.ofSeconds(3600));
       fail();
     } catch (IllegalStateException expected) {
     }
@@ -492,7 +579,7 @@ public class CacheBuilderTest extends TestCase {
     final CountDownLatch tasksFinished = new CountDownLatch(nTasks);
     for (int i = 0; i < nTasks; i++) {
       final String s = "a" + i;
-      @SuppressWarnings("unused") // go/futurereturn-lsc
+      @SuppressWarnings("unused") // https://errorprone.info/bugpattern/FutureReturnValueIgnored
       Future<?> possiblyIgnoredError =
           threadPool.submit(
               new Runnable() {
@@ -580,14 +667,14 @@ public class CacheBuilderTest extends TestCase {
         CacheBuilder.newBuilder()
             .recordStats()
             .concurrencyLevel(2)
-            .expireAfterWrite(100, TimeUnit.MILLISECONDS)
+            .expireAfterWrite(100, MILLISECONDS)
             .removalListener(removalListener)
             .maximumSize(5000)
             .build(countingIdentityLoader);
 
     ExecutorService threadPool = Executors.newFixedThreadPool(nThreads);
     for (int i = 0; i < nTasks; i++) {
-      @SuppressWarnings("unused") // go/futurereturn-lsc
+      @SuppressWarnings("unused") // https://errorprone.info/bugpattern/FutureReturnValueIgnored
       Future<?> possiblyIgnoredError =
           threadPool.submit(
               new Runnable() {
@@ -604,7 +691,7 @@ public class CacheBuilderTest extends TestCase {
     }
 
     threadPool.shutdown();
-    threadPool.awaitTermination(300, TimeUnit.SECONDS);
+    threadPool.awaitTermination(300, SECONDS);
 
     // Since we're not doing any more cache operations, and the cache only expires/evicts when doing
     // other operations, the cache and the removal queue won't change from this point on.

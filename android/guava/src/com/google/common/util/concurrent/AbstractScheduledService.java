@@ -18,7 +18,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
-import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.base.Supplier;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -35,7 +34,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
 import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 /**
@@ -95,7 +93,6 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
  * @author Luke Sandberg
  * @since 11.0
  */
-@Beta
 @GwtIncompatible
 public abstract class AbstractScheduledService implements Service {
   private static final Logger logger = Logger.getLogger(AbstractScheduledService.class.getName());
@@ -122,6 +119,7 @@ public abstract class AbstractScheduledService implements Service {
      *     next
      * @param unit the time unit of the initialDelay and delay parameters
      */
+    @SuppressWarnings("GoodTime") // should accept a java.time.Duration
     public static Scheduler newFixedDelaySchedule(
         final long initialDelay, final long delay, final TimeUnit unit) {
       checkNotNull(unit);
@@ -143,6 +141,7 @@ public abstract class AbstractScheduledService implements Service {
      * @param period the period between successive executions of the task
      * @param unit the time unit of the initialDelay and period parameters
      */
+    @SuppressWarnings("GoodTime") // should accept a java.time.Duration
     public static Scheduler newFixedRateSchedule(
         final long initialDelay, final long period, final TimeUnit unit) {
       checkNotNull(unit);
@@ -171,8 +170,8 @@ public abstract class AbstractScheduledService implements Service {
 
     // A handle to the running task so that we can stop it when a shutdown has been requested.
     // These two fields are volatile because their values will be accessed from multiple threads.
-    @MonotonicNonNullDecl private volatile Future<?> runningTask;
-    @MonotonicNonNullDecl private volatile ScheduledExecutorService executorService;
+    @NullableDecl private volatile Future<?> runningTask;
+    @NullableDecl private volatile ScheduledExecutorService executorService;
 
     // This lock protects the task so we can ensure that none of the template methods (startUp,
     // shutDown or runOneIteration) run concurrently with one another.
@@ -439,7 +438,6 @@ public abstract class AbstractScheduledService implements Service {
    * @author Luke Sandberg
    * @since 11.0
    */
-  @Beta
   public abstract static class CustomScheduler extends Scheduler {
 
     /** A callable class that can reschedule itself using a {@link CustomScheduler}. */
@@ -466,7 +464,8 @@ public abstract class AbstractScheduledService implements Service {
 
       /** The future that represents the next execution of this task. */
       @GuardedBy("lock")
-      @NullableDecl private Future<Void> currentFuture;
+      @NullableDecl
+      private Future<Void> currentFuture;
 
       ReschedulableCallable(
           AbstractService service, ScheduledExecutorService executor, Runnable runnable) {
@@ -565,7 +564,6 @@ public abstract class AbstractScheduledService implements Service {
      * @author Luke Sandberg
      * @since 11.0
      */
-    @Beta
     protected static final class Schedule {
 
       private final long delay;

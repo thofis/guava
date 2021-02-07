@@ -23,7 +23,7 @@ import com.google.common.annotations.GwtCompatible;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import com.google.j2objc.annotations.RetainedWith;
 import java.util.function.BiConsumer;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Implementation of {@link ImmutableMap} with exactly one entry.
@@ -42,6 +42,7 @@ final class SingletonImmutableBiMap<K, V> extends ImmutableBiMap<K, V> {
     checkEntryNotNull(singleKey, singleValue);
     this.singleKey = singleKey;
     this.singleValue = singleValue;
+    this.inverse = null;
   }
 
   private SingletonImmutableBiMap(K singleKey, V singleValue, ImmutableBiMap<V, K> inverse) {
@@ -51,7 +52,7 @@ final class SingletonImmutableBiMap<K, V> extends ImmutableBiMap<K, V> {
   }
 
   @Override
-  public V get(@NullableDecl Object key) {
+  public V get(@Nullable Object key) {
     return singleKey.equals(key) ? singleValue : null;
   }
 
@@ -66,12 +67,12 @@ final class SingletonImmutableBiMap<K, V> extends ImmutableBiMap<K, V> {
   }
 
   @Override
-  public boolean containsKey(@NullableDecl Object key) {
+  public boolean containsKey(@Nullable Object key) {
     return singleKey.equals(key);
   }
 
   @Override
-  public boolean containsValue(@NullableDecl Object value) {
+  public boolean containsValue(@Nullable Object value) {
     return singleValue.equals(value);
   }
 
@@ -90,16 +91,21 @@ final class SingletonImmutableBiMap<K, V> extends ImmutableBiMap<K, V> {
     return ImmutableSet.of(singleKey);
   }
 
-  @LazyInit @RetainedWith transient ImmutableBiMap<V, K> inverse;
+  private final transient @Nullable ImmutableBiMap<V, K> inverse;
+  @LazyInit @RetainedWith private transient @Nullable ImmutableBiMap<V, K> lazyInverse;
 
   @Override
   public ImmutableBiMap<V, K> inverse() {
-    // racy single-check idiom
-    ImmutableBiMap<V, K> result = inverse;
-    if (result == null) {
-      return inverse = new SingletonImmutableBiMap<>(singleValue, singleKey, this);
+    if (inverse != null) {
+      return inverse;
     } else {
-      return result;
+      // racy single-check idiom
+      ImmutableBiMap<V, K> result = lazyInverse;
+      if (result == null) {
+        return lazyInverse = new SingletonImmutableBiMap<>(singleValue, singleKey, this);
+      } else {
+        return result;
+      }
     }
   }
 }

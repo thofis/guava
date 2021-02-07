@@ -48,7 +48,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
 import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 /**
@@ -204,7 +203,7 @@ public final class Sets {
    */
   public static <E> HashSet<E> newHashSet(Iterable<? extends E> elements) {
     return (elements instanceof Collection)
-        ? new HashSet<E>(Collections2.cast(elements))
+        ? new HashSet<E>((Collection<? extends E>) elements)
         : newHashSet(elements.iterator());
   }
 
@@ -309,7 +308,7 @@ public final class Sets {
    */
   public static <E> LinkedHashSet<E> newLinkedHashSet(Iterable<? extends E> elements) {
     if (elements instanceof Collection) {
-      return new LinkedHashSet<E>(Collections2.cast(elements));
+      return new LinkedHashSet<E>((Collection<? extends E>) elements);
     }
     LinkedHashSet<E> set = newLinkedHashSet();
     Iterables.addAll(set, elements);
@@ -437,7 +436,7 @@ public final class Sets {
     // quadratic cost of adding them to the COWAS directly.
     Collection<? extends E> elementsCollection =
         (elements instanceof Collection)
-            ? Collections2.cast(elements)
+            ? (Collection<? extends E>) elements
             : Lists.newArrayList(elements);
     return new CopyOnWriteArraySet<E>(elementsCollection);
   }
@@ -784,7 +783,7 @@ public final class Sets {
 
       @Override
       public boolean isEmpty() {
-        return Collections.disjoint(set1, set2);
+        return Collections.disjoint(set2, set1);
       }
 
       @Override
@@ -1228,6 +1227,7 @@ public final class Sets {
    * @return the Cartesian product, as an immutable set containing immutable lists
    * @throws NullPointerException if {@code sets}, any one of the {@code sets}, or any element of a
    *     provided set is null
+   * @throws IllegalArgumentException if the cartesian product size exceeds the {@code int} range
    * @since 2.0
    */
   public static <B> Set<List<B>> cartesianProduct(List<? extends Set<? extends B>> sets) {
@@ -1284,8 +1284,10 @@ public final class Sets {
    * @return the Cartesian product, as an immutable set containing immutable lists
    * @throws NullPointerException if {@code sets}, any one of the {@code sets}, or any element of a
    *     provided set is null
+   * @throws IllegalArgumentException if the cartesian product size exceeds the {@code int} range
    * @since 2.0
    */
+  @SafeVarargs
   public static <B> Set<List<B>> cartesianProduct(Set<? extends B>... sets) {
     return cartesianProduct(Arrays.asList(sets));
   }
@@ -1333,6 +1335,25 @@ public final class Sets {
     @Override
     protected Collection<List<E>> delegate() {
       return delegate;
+    }
+
+    @Override
+    public boolean contains(@NullableDecl Object object) {
+      if (!(object instanceof List)) {
+        return false;
+      }
+      List<?> list = (List<?>) object;
+      if (list.size() != axes.size()) {
+        return false;
+      }
+      int i = 0;
+      for (Object o : list) {
+        if (!axes.get(i).contains(o)) {
+          return false;
+        }
+        i++;
+      }
+      return true;
     }
 
     @Override
@@ -1446,9 +1467,9 @@ public final class Sets {
     final ImmutableMap<E, Integer> inputSet;
 
     PowerSet(Set<E> input) {
-      this.inputSet = Maps.indexMap(input);
       checkArgument(
-          inputSet.size() <= 30, "Too many elements to create power set: %s > 30", inputSet.size());
+          input.size() <= 30, "Too many elements to create power set: %s > 30", input.size());
+      this.inputSet = Maps.indexMap(input);
     }
 
     @Override
@@ -1484,7 +1505,7 @@ public final class Sets {
     public boolean equals(@NullableDecl Object obj) {
       if (obj instanceof PowerSet) {
         PowerSet<?> that = (PowerSet<?>) obj;
-        return inputSet.equals(that.inputSet);
+        return inputSet.keySet().equals(that.inputSet.keySet());
       }
       return super.equals(obj);
     }
@@ -1721,7 +1742,7 @@ public final class Sets {
       throw new UnsupportedOperationException();
     }
 
-    @MonotonicNonNullDecl private transient UnmodifiableNavigableSet<E> descendingSet;
+    @NullableDecl private transient UnmodifiableNavigableSet<E> descendingSet;
 
     @Override
     public NavigableSet<E> descendingSet() {

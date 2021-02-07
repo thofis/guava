@@ -15,10 +15,11 @@
 package com.google.common.collect;
 
 import com.google.common.annotations.Beta;
+import com.google.errorprone.annotations.DoNotMock;
 import com.google.common.annotations.GwtIncompatible;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A set comprising zero or more {@linkplain Range#isEmpty nonempty}, {@linkplain
@@ -49,6 +50,7 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
  * @since 14.0
  */
 @Beta
+@DoNotMock("Use ImmutableRangeSet or TreeRangeSet")
 @GwtIncompatible
 public interface RangeSet<C extends Comparable> {
   // TODO(lowasser): consider adding default implementations of some of these methods
@@ -260,7 +262,7 @@ public interface RangeSet<C extends Comparable> {
    * according to {@link Range#equals(Object)}.
    */
   @Override
-  boolean equals(@NullableDecl Object obj);
+  boolean equals(@Nullable Object obj);
 
   /** Returns {@code asRanges().hashCode()}. */
   @Override

@@ -14,9 +14,9 @@
 
 package com.google.common.util.concurrent;
 
-import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.DoNotMock;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -51,7 +51,7 @@ import java.util.concurrent.TimeoutException;
  * @author Luke Sandberg
  * @since 9.0 (in 1.0 as {@code com.google.common.base.Service})
  */
-@Beta
+@DoNotMock("Create an AbstractIdleService")
 @GwtIncompatible
 public interface Service {
   /**
@@ -106,6 +106,7 @@ public interface Service {
    *     State#TERMINATED} when this method is called then this will throw an IllegalStateException.
    * @since 15.0
    */
+  @SuppressWarnings("GoodTime") // should accept a java.time.Duration
   void awaitRunning(long timeout, TimeUnit unit) throws TimeoutException;
 
   /**
@@ -126,6 +127,7 @@ public interface Service {
    * @throws IllegalStateException if the service {@linkplain State#FAILED fails}.
    * @since 15.0
    */
+  @SuppressWarnings("GoodTime") // should accept a java.time.Duration
   void awaitTerminated(long timeout, TimeUnit unit) throws TimeoutException;
 
   /**
@@ -171,7 +173,6 @@ public interface Service {
    *
    * @since 9.0 (in 1.0 as {@code com.google.common.base.Service.State})
    */
-  @Beta // should come out of Beta when Service does
   enum State {
     /** A service in this state is inactive. It does minimal work and consumes minimal resources. */
     NEW {
@@ -239,7 +240,6 @@ public interface Service {
    * @author Luke Sandberg
    * @since 15.0 (present as an interface in 13.0)
    */
-  @Beta // should come out of Beta when Service does
   abstract class Listener {
     /**
      * Called when the service transitions from {@linkplain State#NEW NEW} to {@linkplain
@@ -269,9 +269,9 @@ public interface Service {
      * diagram. Therefore, if this method is called, no other methods will be called on the {@link
      * Listener}.
      *
-     * @param from The previous state that is being transitioned from. The only valid values for
-     *     this are {@linkplain State#NEW NEW}, {@linkplain State#RUNNING RUNNING} or {@linkplain
-     *     State#STOPPING STOPPING}.
+     * @param from The previous state that is being transitioned from. Failure can occur in any
+     *     state with the exception of {@linkplain State#FAILED FAILED} and {@linkplain
+     *     State#TERMINATED TERMINATED}.
      */
     public void terminated(State from) {}
 

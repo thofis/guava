@@ -34,7 +34,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.math.RoundingMode;
 import java.util.stream.Collector;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A Bloom filter for instances of {@code T}. A Bloom filter offers an approximate containment test
@@ -177,7 +177,6 @@ public final class BloomFilter<T> implements Predicate<T>, Serializable {
    * @since 14.0 (since 11.0 as expectedFalsePositiveProbability())
    */
   public double expectedFpp() {
-    // You down with FPP? (Yeah you know me!) Who's down with FPP? (Every last homie!)
     return Math.pow((double) bits.bitCount() / bitSize(), numHashFunctions);
   }
 
@@ -226,11 +225,11 @@ public final class BloomFilter<T> implements Predicate<T>, Serializable {
    */
   public boolean isCompatible(BloomFilter<T> that) {
     checkNotNull(that);
-    return (this != that)
-        && (this.numHashFunctions == that.numHashFunctions)
-        && (this.bitSize() == that.bitSize())
-        && (this.strategy.equals(that.strategy))
-        && (this.funnel.equals(that.funnel));
+    return this != that
+        && this.numHashFunctions == that.numHashFunctions
+        && this.bitSize() == that.bitSize()
+        && this.strategy.equals(that.strategy)
+        && this.funnel.equals(that.funnel);
   }
 
   /**
@@ -269,7 +268,7 @@ public final class BloomFilter<T> implements Predicate<T>, Serializable {
   }
 
   @Override
-  public boolean equals(@NullableDecl Object object) {
+  public boolean equals(@Nullable Object object) {
     if (object == this) {
       return true;
     }
